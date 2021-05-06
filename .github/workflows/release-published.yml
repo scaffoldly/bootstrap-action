@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: scaffoldly/bump-version-action@1.0.86
+      - uses: scaffoldly/bump-version-action@1.0.87
         with:
           action: postrelease
           version-file: module.json
