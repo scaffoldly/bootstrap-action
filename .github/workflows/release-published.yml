@@ -10,5 +10,5 @@ jobs:
       - uses: scaffoldly/bump-version-action@1.0.87
         with:
           action: postrelease
-          version-file: module.json
+          version-file: package.json
           repo-token: ${{ secrets.GITHUB_TOKEN }}
