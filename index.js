@@ -7,6 +7,8 @@ const fs = require("fs");
 const semver = require("semver");
 const immutable = require("immutable");
 
+const SLY_FILE = "./sly.json";
+
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
   await simpleGit
