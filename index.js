@@ -3,13 +3,9 @@ const github = require("@actions/github");
 const simpleGit = require("simple-git");
 const axios = require("axios");
 const proc = require("child_process");
-const openpgp = require("openpgp");
 const fs = require("fs");
 const semver = require("semver");
 const immutable = require("immutable");
-const { Readable } = require("stream");
-
-const SLY_FILE = "./sly.json";
 
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
@@ -404,15 +400,39 @@ ${output}
   return { apply: output, version };
 };
 
+const event = (org, repo, action) => {
+  const dnt = core.getInput("dnt", { required: false });
+  if (dnt) {
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("v", "1");
+  params.set("t", "event");
+  params.set("tid", "UA-196400659-2");
+  params.set("ec", "bootstrap-action");
+  params.set("cid", org);
+  params.set("ea", action);
+  params.set("el", `${org}/${repo}`);
+
+  axios.default
+    .post(`https://www.google-analytics.com/collect?${params.toString()}`)
+    .then(() => {})
+    .catch((error) => {
+      console.error("Event Log Error", error);
+    });
+};
+
 const run = async () => {
+  const action = core.getInput("action");
   const { organization, repo } = await repoInfo();
+  event(organization, repo, action);
+
   core.setOutput("organization", organization);
 
   await createTerraformOrganization(organization);
   await createTerraformWorkspace(organization, repo);
   await terraformInit(organization);
-
-  const action = core.getInput("action");
 
   switch (action) {
     case "plan": {

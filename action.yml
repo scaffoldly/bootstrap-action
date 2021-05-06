@@ -16,6 +16,8 @@ inputs:
   terraform-cloud-token:
     description: "Access Token to Terraform Cloud (https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)"
     required: true
+  dnt:
+    description: "If set, opt-out of usage analytics"
 outputs:
   organization:
     description: "The GitHub/Terraform Cloud Organization"
