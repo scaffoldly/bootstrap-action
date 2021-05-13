@@ -14,6 +14,8 @@ const fs = __nccwpck_require__(5747);
 const semver = __nccwpck_require__(1383);
 const immutable = __nccwpck_require__(3609);
 
+const SLY_FILE = "./sly.json";
+
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
   await simpleGit
