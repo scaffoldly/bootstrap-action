@@ -408,17 +408,17 @@ const event = (org, repo, action) => {
     return;
   }
 
-  const params = new URLSearchParams();
-  params.set("v", "1");
-  params.set("t", "event");
-  params.set("tid", "UA-196400659-2");
-  params.set("ec", "bootstrap-action");
-  params.set("cid", org);
-  params.set("ea", action);
-  params.set("el", `${org}/${repo}`);
-
   axios.default
-    .post(`https://www.google-analytics.com/collect?${params.toString()}`)
+    .post(
+      `https://api.segment.io/v1/track`,
+      {
+        userId: org,
+        event: action,
+        properties: { script: "bootstrap-action" },
+        context: { repo },
+      },
+      { auth: { username: "RvjEAi2NrzWFz3SL0bNwh5yVwrwWr0GA", password: "" } }
+    )
     .then(() => {})
     .catch((error) => {
       console.error("Event Log Error", error);
