@@ -442,16 +442,12 @@ const terraformOutput = async (organization) => {
 
   let { stdout } = await exec(organization, command);
 
-  console.log("STDOUT >>>");
-  console.log(stdout.split("\n").slice(1).join("\n"));
-  console.log("<<< STDOUT");
+  const output = JSON.parse(stdout.split("\n").slice(1).join("\n")); // Trim the first line that shows the shell command
 
-  fs.writeFileSync(
-    TERRAFORM_OUTPUT_FILE,
-    stdout.split("\n").slice(1).join("\n")
-  );
-
-  return JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT_FILE));
+  return Object.entries(output).reduce((acc, [key, value]) => {
+    acc[key] = value.value;
+    return acc;
+  }, {});
 };
 
 const event = (org, repo, action) => {
@@ -532,7 +528,7 @@ const run = async () => {
   }
 
   const tfOutput = await terraformOutput(organization);
-  console.log("Output from Terraform: ", JSON.stringify(tfOutput, null, 2));
+  console.log("Output from Terraform:\n", JSON.stringify(tfOutput, null, 2));
 
   core.setOutput("terraform-output", tfOutput);
 };
