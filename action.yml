@@ -30,6 +30,8 @@ outputs:
     description: "The GitHub/Terraform Cloud Organization"
   terraform-output:
     description: "Any Terraform Outputs, as stringify'd JSON"
+  matrix:
+    description: "If there's an output variable called 'github_matrix_include', the values will be provided in this output"
 runs:
   using: "node12"
   main: "dist/index.js"

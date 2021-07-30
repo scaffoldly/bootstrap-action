@@ -524,6 +524,9 @@ const run = async () => {
   console.log("Output from Terraform:\n", JSON.stringify(tfOutput, null, 2));
 
   core.setOutput("terraform-output", tfOutput);
+  if (tfOutput.github_matrix_include) {
+    core.setOutput("matrix", { include: tfOutput.github_matrix_include });
+  }
 };
 
 (async () => {
