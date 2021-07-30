@@ -441,7 +441,7 @@ const terraformOutput = async (organization) => {
 
   const { stdout } = await exec(organization, command);
 
-  return JSON.parse(stdout);
+  return JSON.parse(`"${stdout}"`);
 };
 
 const event = (org, repo, action) => {
