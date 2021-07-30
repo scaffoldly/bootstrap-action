@@ -364,11 +364,11 @@ const terraformInit = async (organization, workspace) => {
 
   fs.writeFileSync(
     BACKEND_HCL_FILE,
-    ```
+    `
 workspaces { name = "${workspaceName}" }
 hostname     = "app.terraform.io"
 organization = "${organization}"
-```
+`
   );
 
   const command = `terraform init -backend-config=${BACKEND_HCL_FILE} -backend-config="token=${terraformCloudToken}"`;
