@@ -352,7 +352,7 @@ const exec = (org, command) => {
   });
 };
 
-const terraformInit = async (organization) => {
+const terraformInit = async (organization, workspace) => {
   const terraformCloudToken = core.getInput("terraform-cloud-token");
 
   const workspaceSuffix = core.getInput("workspace-suffix", {
@@ -368,11 +368,10 @@ const terraformInit = async (organization) => {
 workspaces { name = "${workspaceName}" }
 hostname     = "app.terraform.io"
 organization = "${organization}"
-token        = "${terraformCloudToken}"
 ```
   );
 
-  const command = `terraform init -backend-config=${BACKEND_HCL_FILE}`;
+  const command = `terraform init -backend-config=${BACKEND_HCL_FILE} -backend-config="token=${terraformCloudToken}"`;
 
   await exec(organization, command);
 };
@@ -468,7 +467,7 @@ const run = async () => {
 
   await createTerraformOrganization(organization);
   await createTerraformWorkspace(organization, repo);
-  await terraformInit(organization);
+  await terraformInit(organization, repo);
 
   switch (action) {
     case "plan": {
