@@ -19,6 +19,9 @@ inputs:
   workspace-suffix:
     description: "A suffix for the workspace name"
     required: false
+  working-directory:
+    description: "The working directory containing terraform config"
+    required: false
   dnt:
     description: "If set, opt-out of usage analytics"
     required: false

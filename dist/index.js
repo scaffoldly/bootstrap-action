@@ -15,7 +15,8 @@ const semver = __nccwpck_require__(1383);
 const immutable = __nccwpck_require__(3609);
 
 const SLY_FILE = "./sly.json";
-const BACKEND_HCL_FILE = "./.terraform/backend.hcl";
+const TERRAFORM_DIRECTORY = "./.terraform";
+const BACKEND_HCL_FILE = `${TERRAFORM_DIRECTORY}/backend.hcl`;
 
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
@@ -369,6 +370,7 @@ const terraformInit = async (organization, workspace) => {
     workspaceSuffix ? `-${workspaceSuffix}` : ""
   }`;
 
+  fs.mkdirSync(TERRAFORM_DIRECTORY);
   fs.writeFileSync(
     BACKEND_HCL_FILE,
     `
@@ -469,6 +471,14 @@ const run = async () => {
   const action = core.getInput("action");
   const { organization, repo } = await repoInfo();
   event(organization, repo, action);
+
+  const workingDirectory = core.getInput("working-directory", {
+    required: false,
+  });
+  if (workingDirectory) {
+    process.chdir(workingDirectory);
+    console.log("Changed working directory", process.cwd());
+  }
 
   core.setOutput("organization", organization);
 
