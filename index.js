@@ -428,7 +428,7 @@ ${output}
   return { apply: output, version };
 };
 
-const terraformOutput = (organization) => {
+const terraformOutput = async (organization) => {
   const command = `terraform output -json`;
 
   const { stdout } = await exec(organization, command);

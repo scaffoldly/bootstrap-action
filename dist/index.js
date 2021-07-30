@@ -15,6 +15,7 @@ const semver = __nccwpck_require__(1383);
 const immutable = __nccwpck_require__(3609);
 
 const SLY_FILE = "./sly.json";
+const BACKEND_HCL_FILE = "./.terraform/backend.hcl";
 
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
@@ -276,13 +277,21 @@ const createTerraformOrganization = async (organization) => {
 };
 
 const createTerraformWorkspace = async (organization, workspace) => {
+  const workspaceSuffix = core.getInput("workspace-suffix", {
+    required: false,
+  });
+
+  const workspaceName = `${workspace}${
+    workspaceSuffix ? `-${workspaceSuffix}` : ""
+  }`;
+
   const { status, data } = await terraformPost(
     `https://app.terraform.io/api/v2/organizations/${organization}/workspaces`,
     {
       data: {
         type: "workspaces",
         attributes: {
-          name: workspace,
+          name: workspaceName,
           operations: false,
         },
       },
@@ -353,7 +362,24 @@ const exec = (org, command) => {
 const terraformInit = async (organization) => {
   const terraformCloudToken = core.getInput("terraform-cloud-token");
 
-  const command = `terraform init -backend-config="hostname=app.terraform.io" -backend-config="organization=${organization}" -backend-config="token=${terraformCloudToken}"`;
+  const workspaceSuffix = core.getInput("workspace-suffix", {
+    required: false,
+  });
+  const workspaceName = `${workspace}${
+    workspaceSuffix ? `-${workspaceSuffix}` : ""
+  }`;
+
+  fs.writeFileSync(
+    BACKEND_HCL_FILE,
+    ```
+workspaces { name = "${workspaceName}" }
+hostname     = "app.terraform.io"
+organization = "${organization}"
+token        = "${terraformCloudToken}"
+```
+  );
+
+  const command = `terraform init -backend-config=${BACKEND_HCL_FILE}`;
 
   await exec(organization, command);
 };
@@ -407,6 +433,14 @@ ${output}
   console.log(`Created release: ${release.data.name}: ${release.data.url}`);
 
   return { apply: output, version };
+};
+
+const terraformOutput = async (organization) => {
+  const command = `terraform output -json`;
+
+  const { stdout } = await exec(organization, command);
+
+  return JSON.parse(stdout);
 };
 
 const event = (org, repo, action) => {
@@ -467,16 +501,21 @@ const run = async () => {
       break;
     }
 
-    case "sh": {
+    case "terraform": {
       const command = core.getInput("command", { required: true });
-      console.log(`Running shell command: ${command}`);
-      await exec(organization, command);
+      console.log(`Running terraform command: \`terraform ${command}\``);
+      await exec(organization, `terraform ${command}`);
       break;
     }
 
     default:
       throw new Error(`Unknown action: ${action}`);
   }
+
+  const tfOutput = await terraformOutput(organization);
+  console.log("Output from Terraform: ", JSON.stringify(tfOutput, null, 2));
+
+  core.setOutput("terraform-output", tfOutput);
 };
 
 (async () => {
