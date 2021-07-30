@@ -532,7 +532,7 @@ const run = async () => {
 
   core.setOutput("terraform-output", tfOutput);
   if (tfOutput.github_matrix_include) {
-    core.setOutput("matrix", { include: tfOutput.github_matrix });
+    core.setOutput("matrix", { include: tfOutput.github_matrix_include });
   }
 };
 
