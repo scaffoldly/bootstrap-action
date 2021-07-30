@@ -433,13 +433,16 @@ ${output}
 const terraformOutput = async (organization) => {
   const command = `terraform output -json`;
 
-  const { stdout } = await exec(organization, command);
+  let { stdout } = await exec(organization, command);
 
   console.log("STDOUT >>>");
-  console.log(stdout);
+  console.log(stdout.split("\n").slice(1).join("\n"));
   console.log("<<< STDOUT");
 
-  fs.writeFileSync(TERRAFORM_OUTPUT_FILE, stdout);
+  fs.writeFileSync(
+    TERRAFORM_OUTPUT_FILE,
+    stdout.split("\n").slice(1).join("\n")
+  );
 
   return JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT_FILE));
 };
