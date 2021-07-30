@@ -17,6 +17,7 @@ const immutable = __nccwpck_require__(3609);
 const SLY_FILE = "./sly.json";
 const TERRAFORM_DIRECTORY = "./.terraform";
 const BACKEND_HCL_FILE = `${TERRAFORM_DIRECTORY}/backend.hcl`;
+const TERRAFORM_OUTPUT_FILE = `${TERRAFORM_DIRECTORY}/output.json`;
 
 const repoInfo = async () => {
   const rootEmail = core.getInput("root-email");
@@ -441,7 +442,9 @@ const terraformOutput = async (organization) => {
 
   const { stdout } = await exec(organization, command);
 
-  return JSON.parse(`"${stdout}"`);
+  fs.writeFileSync(TERRAFORM_OUTPUT_FILE, stdout);
+
+  return JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT_FILE));
 };
 
 const event = (org, repo, action) => {
