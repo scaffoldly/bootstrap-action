@@ -2,10 +2,10 @@ name: "Setup Bootstrap"
 description: "GitHub Action for scaffoldly/bootstrap"
 inputs:
   action:
-    description: "The action to run: 'plan` or 'apply'"
+    description: "The action to run: 'plan` or 'apply', or 'terraform'"
     required: true
-  command:
-    description: "The shell command to run with the 'sh' action"
+  terraform:
+    description: "The arguments to send alongside the 'terraform' action"
     required: false
   repo-token:
     description: "The GitHub token for this repo. (https://docs.github.com/en/actions/reference/authentication-in-a-workflow#example-passing-github_token-as-an-input)"
@@ -16,11 +16,17 @@ inputs:
   terraform-cloud-token:
     description: "Access Token to Terraform Cloud (https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)"
     required: true
+  workspace-suffix:
+    description: "A suffix for the workspace name"
+    required: false
   dnt:
     description: "If set, opt-out of usage analytics"
+    required: false
 outputs:
   organization:
     description: "The GitHub/Terraform Cloud Organization"
+  terraform-output:
+    description: "Any Terraform Outputs, as stringify'd JSON"
 runs:
   using: "node12"
   main: "dist/index.js"
