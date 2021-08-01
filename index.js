@@ -519,12 +519,12 @@ const run = async () => {
   switch (action) {
     case "plan": {
       // TODO: lint planfile (terraform show -json planfile)
-      const { version } = await prerelease(repo);
+      const { tagName } = await prerelease(repo);
       const { plan, planfile } = await terraformPlan(
         organization,
         "./planfile"
       );
-      await draftRelease(organization, repo, version, plan, {
+      await draftRelease(organization, repo, tagName, plan, {
         planfile,
       });
       break;
