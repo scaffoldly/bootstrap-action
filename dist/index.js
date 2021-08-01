@@ -71,33 +71,33 @@ const slyVersionSet = (version) => {
 };
 
 const parseWorkspace = (workspace) => {
-  const workingDirectory = core.getInput("working-directory", {
+  const moduleDirectory = core.getInput("module-directory", {
     required: false,
   });
 
-  if (!workingDirectory || workingDirectory === ".") {
+  if (!moduleDirectory) {
     return { workspaceName: workspace, tagPrefix: `` };
   }
 
-  const tagPrefix = workingDirectory
+  const tagPrefix = moduleDirectory
     .replace(/^(\.\/)/, "") // trim off leading ./
     .replace(/[/]$/, ""); // trim off trailing /
 
-  const scrubbedWorkingDirectory = tagPrefix
+  const scrubbedModuleDirectory = tagPrefix
     .replace(/[/]/gm, "--") // convert / into --
     .replace(/[^a-zA-Z0-9]/gm, "-"); // non alphanum to dashes
 
   return {
-    workspaceName: `${workspace}-${scrubbedWorkingDirectory}`,
+    workspaceName: `${workspace}-${scrubbedModuleDirectory}`,
     tagPrefix: `${tagPrefix}/`,
   };
 };
 
 const prerelease = async (workspace, prereleaseCommit) => {
   const version = slyVersionFetch();
+  const { tagPrefix } = parseWorkspace(workspace);
 
   if (!prereleaseCommit) {
-    const { tagPrefix } = parseWorkspace(workspace);
     return {
       version,
       tagName: `${tagPrefix}${version.version}`,
@@ -115,8 +115,6 @@ const prerelease = async (workspace, prereleaseCommit) => {
     `Committed new version: ${newVersion.version}`,
     JSON.stringify(versionCommit)
   );
-
-  const { tagPrefix } = parseWorkspace(workspace);
 
   const tag = await simpleGit
     .default()
@@ -165,6 +163,7 @@ const postrelease = async (org, repo, postreleaseCommit) => {
 // TODO: Handle PR -- Plan only as PR Comment
 // TODO: Skip if commit message is "Initial Whatever" (from repo template)
 // TODO: Glob Up Commit Messages since last release
+// TODO: Unique tag names if
 const draftRelease = async (org, repo, tagName, plan, files) => {
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
@@ -214,7 +213,7 @@ const fetchRelease = async (org, repo) => {
   const parts = githubRef.split("/").slice(2);
   const version = semver.parse(parts.slice(-1)[0]);
   const tagPrefix = parts.slice(0, -1).join("/");
-  const workingDirectory = parts.length > 1 ? `./${tagPrefix}` : null;
+  const moduleDirectory = parts.length > 1 ? `./${tagPrefix}` : null;
 
   const tagName = `${tagPrefix}${version.version}`;
 
@@ -264,7 +263,7 @@ const fetchRelease = async (org, repo) => {
     releaseId: release.data.id,
     version,
     tagName,
-    workingDirectory: workingDirectory || undefined,
+    moduleDirectory: moduleDirectory || undefined,
     files: immutable.merge({}, ...assets),
   };
 };
@@ -401,7 +400,13 @@ const exec = (org, command) => {
   });
 };
 
-const terraformInit = async (organization, workspace) => {
+const terraformInit = async (organization, workspace, moduleDirectory) => {
+  const cwd = process.cwd();
+  if (moduleDirectory) {
+    process.chdir(moduleDirectory);
+    console.log("Changed working directory", process.cwd());
+  }
+
   const terraformCloudToken = core.getInput("terraform-cloud-token");
 
   const { workspaceName } = parseWorkspace(workspace);
@@ -419,21 +424,38 @@ organization = "${organization}"
   const command = `terraform init -backend-config=${BACKEND_HCL_FILE} -backend-config="token=${terraformCloudToken}"`;
 
   await exec(organization, command);
+
+  if (moduleDirectory) {
+    process.chdir(cwd);
+    console.log("Changed working directory", process.cwd());
+  }
 };
 
-const terraformPlan = async (organization, planfile) => {
+const terraformPlan = async (organization, planfile, moduleDirectory) => {
+  const cwd = process.cwd();
+  if (moduleDirectory) {
+    process.chdir(moduleDirectory);
+    console.log("Changed working directory", process.cwd());
+  }
+
   const command = `terraform plan -no-color -out ${planfile}`;
   const { stdout: plan } = await exec(organization, command);
   const terraformCloudToken = core.getInput("terraform-cloud-token");
   const encryptCommand = `gpg --batch -c --passphrase "${terraformCloudToken}" planfile`;
   await exec(organization, encryptCommand);
+
+  if (moduleDirectory) {
+    process.chdir(cwd);
+    console.log("Changed working directory", process.cwd());
+  }
+
   return { plan, planfile: "./planfile.gpg" };
 };
 
-const terraformApply = async (org, planfile, workingDirectory) => {
+const terraformApply = async (org, planfile, moduleDirectory) => {
   const cwd = process.cwd();
-  if (workingDirectory) {
-    process.chdir(workingDirectory);
+  if (moduleDirectory) {
+    process.chdir(moduleDirectory);
     console.log("Changed working directory", process.cwd());
   }
 
@@ -454,7 +476,7 @@ const terraformApply = async (org, planfile, workingDirectory) => {
     output = e.message;
   }
 
-  if (workingDirectory) {
+  if (moduleDirectory) {
     process.chdir(cwd);
     console.log("Changed working directory", process.cwd());
   }
@@ -503,30 +525,26 @@ const run = async () => {
   const { organization, repo } = await repoInfo();
   event(organization, repo, action);
 
-  const workingDirectory = core.getInput("working-directory", {
-    required: false,
-  });
-  if (workingDirectory) {
-    process.chdir(workingDirectory);
-    console.log("Changed working directory", process.cwd());
-  }
-
   core.setOutput("organization", organization);
 
   await createTerraformOrganization(organization);
   await createTerraformWorkspace(organization, repo);
-  await terraformInit(organization, repo);
 
   switch (action) {
     case "plan": {
       // TODO: lint planfile (terraform show -json planfile)
-      const prereleaseCommit = boolean.boolean(
-        core.getInput("prerelease-commit", { required: false }) || "true"
+      const moduleDirectory = core.getInput("moduleDirectory", {
+        required: false,
+      });
+      await terraformInit(organization, repo, moduleDirectory);
+      const { tagName } = await prerelease(
+        repo,
+        moduleDirectory ? false : true
       );
-      const { tagName } = await prerelease(repo, prereleaseCommit);
       const { plan, planfile } = await terraformPlan(
         organization,
-        "./planfile"
+        "./planfile",
+        moduleDirectory
       );
       await draftRelease(organization, repo, tagName, plan, {
         planfile,
@@ -535,15 +553,16 @@ const run = async () => {
     }
 
     case "apply": {
-      const { files, version, workingDirectory } = await fetchRelease(
+      const { files, version, moduleDirectory } = await fetchRelease(
         organization,
         repo
       );
       if (!files || files.length === 0) {
         throw new Error(`No release assets on version ${version}`);
       }
-      await terraformApply(organization, files["planfile"], workingDirectory);
-      await postrelease(organization, repo, !workingDirectory);
+      await terraformInit(organization, repo, moduleDirectory);
+      await terraformApply(organization, files["planfile"], moduleDirectory);
+      await postrelease(organization, repo, moduleDirectory ? false : true);
       break;
     }
 

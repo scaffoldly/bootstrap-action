@@ -16,11 +16,8 @@ inputs:
   terraform-cloud-token:
     description: "Access Token to Terraform Cloud (https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)"
     required: true
-  working-directory:
-    description: "The working directory containing terraform config"
-    required: false
-  prerelease-commit:
-    description: "Enable prerelease commit (default: true)"
+  module-directory:
+    description: "The subdirectory of a specific module to build"
     required: false
   dnt:
     description: "If set, opt-out of usage analytics"
