@@ -458,7 +458,7 @@ ${output}
 
   console.log(`Created release: ${release.data.name}: ${release.data.url}`);
 
-  return { apply: output, version, tagNam };
+  return { apply: output, version, tagName };
 };
 
 const terraformOutput = async (organization) => {
