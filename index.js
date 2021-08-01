@@ -534,7 +534,7 @@ const run = async () => {
   switch (action) {
     case "plan": {
       // TODO: lint planfile (terraform show -json planfile)
-      const moduleDirectory = core.getInput("moduleDirectory", {
+      const moduleDirectory = core.getInput("module-directory", {
         required: false,
       });
       await terraformInit(organization, repo, moduleDirectory);
