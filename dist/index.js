@@ -13,6 +13,7 @@ const proc = __nccwpck_require__(3129);
 const fs = __nccwpck_require__(5747);
 const semver = __nccwpck_require__(1383);
 const immutable = __nccwpck_require__(3609);
+const boolean = __nccwpck_require__(8641);
 
 const SLY_FILE = "./sly.json";
 const TERRAFORM_DIRECTORY = "./.terraform";
@@ -92,8 +93,16 @@ const parseWorkspace = (workspace) => {
   };
 };
 
-const prerelease = async (workspace) => {
+const prerelease = async (workspace, prereleaseCommit) => {
   const version = slyVersionFetch();
+
+  if (!prereleaseCommit) {
+    const { tagPrefix } = parseWorkspace(workspace);
+    return {
+      version,
+      tagName: `${tagPrefix}${version.version}`,
+    };
+  }
 
   const newVersion = semver.parse(semver.inc(version, "prerelease"));
 
@@ -120,7 +129,13 @@ const prerelease = async (workspace) => {
   return { version: newVersion, tagName: tag.name };
 };
 
-const postrelease = async (org, repo) => {
+const postrelease = async (org, repo, postreleaseCommit) => {
+  const version = slyVersionFetch();
+
+  if (!postreleaseCommit) {
+    return { version };
+  }
+
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
@@ -130,7 +145,6 @@ const postrelease = async (org, repo) => {
   await simpleGit.default().fetch();
   await simpleGit.default().checkout(defaultBranch);
 
-  const version = slyVersionFetch();
   const newVersion = semver.parse(semver.inc(version, "patch"));
 
   slyVersionSet(newVersion.version);
@@ -192,23 +206,15 @@ ${plan}
 };
 
 const fetchRelease = async (org, repo) => {
-  const version = slyVersionFetch();
-  if (version.prerelease.length === 0) {
-    throw new Error(
-      `Unable to apply, version not a prerelease: ${version.version}`
-    );
+  const { GITHUB_REF: githubRef } = process.env;
+  if (!githubRef.startsWith("refs/tags/")) {
+    throw new Error(`Unable to apply, not a tag: ${githubRef}`);
   }
 
-  let tagPrefix = "";
-  const { GITHUB_REF: githubRef } = process.env;
-  if (githubRef.startsWith("refs/tags/")) {
-    const parts = githubRef.split("/").slice(2, -1);
-    tagPrefix = parts.join("/");
-    parts.forEach((part) => {
-      process.chdir(part);
-      console.log("Changed working directory", process.cwd());
-    });
-  }
+  const parts = githubRef.split("/").slice(2);
+  const version = semver.parse(parts.slice(-1)[0]);
+  const tagPrefix = parts.slice(0, -1).join("/");
+  const workingDirectory = parts.length > 1 ? `./${tagPrefix}` : null;
 
   const tagName = `${tagPrefix}${version.version}`;
 
@@ -258,6 +264,7 @@ const fetchRelease = async (org, repo) => {
     releaseId: release.data.id,
     version,
     tagName,
+    workingDirectory: workingDirectory || undefined,
     files: immutable.merge({}, ...assets),
   };
 };
@@ -423,12 +430,16 @@ const terraformPlan = async (organization, planfile) => {
   return { plan, planfile: "./planfile.gpg" };
 };
 
-const terraformApply = async (org, repo, planfile) => {
+const terraformApply = async (org, planfile, workingDirectory) => {
+  const cwd = process.cwd();
+  if (workingDirectory) {
+    process.chdir(workingDirectory);
+    console.log("Changed working directory", process.cwd());
+  }
+
   const terraformCloudToken = core.getInput("terraform-cloud-token");
   const decryptCommand = `gpg --batch -d --passphrase "${terraformCloudToken}" -o ./plan ${planfile}`;
   await exec(org, decryptCommand);
-
-  let version = semver.parse(semver.inc(slyVersionFetch(), "patch"));
 
   let output;
   try {
@@ -443,29 +454,12 @@ const terraformApply = async (org, repo, planfile) => {
     output = e.message;
   }
 
-  const { tagPrefix } = parseWorkspace(repo);
-  const tagName = `${tagPrefix}${version.version}`;
+  if (workingDirectory) {
+    process.chdir(cwd);
+    console.log("Changed working directory", process.cwd());
+  }
 
-  const repoToken = core.getInput("repo-token");
-  const octokit = github.getOctokit(repoToken);
-
-  const release = await octokit.repos.createRelease({
-    owner: org,
-    repo,
-    name: tagName,
-    tag_name: tagName,
-    body: `
-The following was applied for ${tagName}:
-
-\`\`\`
-${output}
-\`\`\`
-`,
-  });
-
-  console.log(`Created release: ${release.data.name}: ${release.data.url}`);
-
-  return { apply: output, version, tagName };
+  return { apply: output };
 };
 
 const terraformOutput = async (organization) => {
@@ -526,7 +520,10 @@ const run = async () => {
   switch (action) {
     case "plan": {
       // TODO: lint planfile (terraform show -json planfile)
-      const { tagName } = await prerelease(repo);
+      const prereleaseCommit = boolean.boolean(
+        core.getInput("prerelease-commit", { required: false }) || "true"
+      );
+      const { tagName } = await prerelease(repo, prereleaseCommit);
       const { plan, planfile } = await terraformPlan(
         organization,
         "./planfile"
@@ -538,12 +535,15 @@ const run = async () => {
     }
 
     case "apply": {
-      const { files, version } = await fetchRelease(organization, repo);
+      const { files, version, workingDirectory } = await fetchRelease(
+        organization,
+        repo
+      );
       if (!files || files.length === 0) {
         throw new Error(`No release assets on version ${version}`);
       }
-      await terraformApply(organization, repo, files["planfile"]);
-      await postrelease(organization, repo);
+      await terraformApply(organization, files["planfile"], workingDirectory);
+      await postrelease(organization, repo, !workingDirectory);
       break;
     }
 
@@ -7371,6 +7371,30 @@ function removeHook(state, name, method) {
 
   state.registry[name].splice(index, 1);
 }
+
+
+/***/ }),
+
+/***/ 8641:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.boolean = void 0;
+const boolean = function (value) {
+    switch (Object.prototype.toString.call(value)) {
+        case '[object String]':
+            return ['true', 't', 'yes', 'y', 'on', '1'].includes(value.trim().toLowerCase());
+        case '[object Number]':
+            return value.valueOf() === 1;
+        case '[object Boolean]':
+            return value.valueOf();
+        default:
+            return false;
+    }
+};
+exports.boolean = boolean;
 
 
 /***/ }),

@@ -19,6 +19,9 @@ inputs:
   working-directory:
     description: "The working directory containing terraform config"
     required: false
+  prerelease-commit:
+    description: "Enable prerelease commit (default: true)"
+    required: false
   dnt:
     description: "If set, opt-out of usage analytics"
     required: false
