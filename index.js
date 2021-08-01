@@ -62,7 +62,30 @@ const slyVersionSet = (version) => {
   fs.writeFileSync(SLY_FILE, JSON.stringify(slyFile));
 };
 
-const prerelease = async () => {
+const parseWorkspace = (workspace) => {
+  const workingDirectory = core.getInput("working-directory", {
+    required: false,
+  });
+
+  if (!workingDirectory || workingDirectory === ".") {
+    return { workspaceName: workspace, tagPrefix: `` };
+  }
+
+  const tagPrefix = workingDirectory
+    .replace(/^(\.\/)/, "") // trim off leading ./
+    .replace(/[/]$/, ""); // trim off trailing /
+
+  const scrubbedWorkingDirectory = tagPrefix
+    .replace(/[/]/gm, "--") // convert / into --
+    .replace(/[^a-zA-Z0-9]/gm, "-"); // non alphanum to dashes
+
+  return {
+    workspaceName: `${workspace}-${scrubbedWorkingDirectory}`,
+    tagPrefix: `${tagPrefix}/`,
+  };
+};
+
+const prerelease = async (workspace) => {
   const version = slyVersionFetch();
 
   const newVersion = semver.parse(semver.inc(version, "prerelease"));
@@ -77,13 +100,17 @@ const prerelease = async () => {
     JSON.stringify(versionCommit)
   );
 
-  const tag = await simpleGit.default().addTag(newVersion.version);
+  const { tagPrefix } = parseWorkspace(workspace);
+
+  const tag = await simpleGit
+    .default()
+    .addTag(`${tagPrefix}${newVersion.version}`);
   console.log(`Created new tag: ${tag.name}`);
 
   await simpleGit.default().push(["--follow-tags"]);
   await simpleGit.default().pushTags();
 
-  return { version: newVersion };
+  return { version: newVersion, tagName: tag.name };
 };
 
 const postrelease = async (org, repo) => {
@@ -117,18 +144,18 @@ const postrelease = async (org, repo) => {
 // TODO: Handle PR -- Plan only as PR Comment
 // TODO: Skip if commit message is "Initial Whatever" (from repo template)
 // TODO: Glob Up Commit Messages since last release
-const draftRelease = async (org, repo, version, plan, files) => {
+const draftRelease = async (org, repo, tagName, plan, files) => {
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
   const release = await octokit.repos.createRelease({
     owner: org,
     repo,
-    name: version.version,
-    tag_name: version.version,
+    name: tagName,
+    tag_name: tagName,
     draft: true,
     body: `
-The following plan was created for ${version.version}:
+The following plan was created for ${tagName}:
 
 \`\`\`
 ${plan}
@@ -165,21 +192,32 @@ const fetchRelease = async (org, repo) => {
     );
   }
 
+  let tagPrefix = "";
+  const { GITHUB_REF: githubRef } = process.env;
+  if (githubRef.startsWith("refs/tags/")) {
+    const parts = githubRef.split("/").slice(2, -1);
+    tagPrefix = parts.join("/");
+    parts.forEach((part) => {
+      process.chdir(part);
+      console.log("Changed working directory", process.cwd());
+    });
+  }
+
+  const tagName = `${tagPrefix}${version.version}`;
+
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
   const release = await octokit.repos.getReleaseByTag({
     owner: org,
     repo,
-    tag: version.version,
+    tag: tagName,
   });
   if (!release || !release.data || !release.data.id) {
-    throw new Error(`Unable to find a release for tag: ${version.version}`);
+    throw new Error(`Unable to find a release for tag: ${tagName}`);
   }
 
-  console.log(
-    `Found release ID ${release.data.id} for version ${version.version}`
-  );
+  console.log(`Found release ID ${release.data.id} for tag ${tagName}`);
 
   const releaseAssets = await octokit.repos.listReleaseAssets({
     owner: org,
@@ -212,6 +250,7 @@ const fetchRelease = async (org, repo) => {
   return {
     releaseId: release.data.id,
     version,
+    tagName,
     files: immutable.merge({}, ...assets),
   };
 };
@@ -272,13 +311,7 @@ const createTerraformOrganization = async (organization) => {
 };
 
 const createTerraformWorkspace = async (organization, workspace) => {
-  const workspaceSuffix = core.getInput("workspace-suffix", {
-    required: false,
-  });
-
-  const workspaceName = `${workspace}${
-    workspaceSuffix ? `-${workspaceSuffix}` : ""
-  }`;
+  const { workspaceName } = parseWorkspace(workspace);
 
   const { status, data } = await terraformPost(
     `https://app.terraform.io/api/v2/organizations/${organization}/workspaces`,
@@ -357,12 +390,7 @@ const exec = (org, command) => {
 const terraformInit = async (organization, workspace) => {
   const terraformCloudToken = core.getInput("terraform-cloud-token");
 
-  const workspaceSuffix = core.getInput("workspace-suffix", {
-    required: false,
-  });
-  const workspaceName = `${workspace}${
-    workspaceSuffix ? `-${workspaceSuffix}` : ""
-  }`;
+  const { workspaceName } = parseWorkspace(workspace);
 
   fs.mkdirSync(TERRAFORM_DIRECTORY);
   fs.writeFileSync(
@@ -408,16 +436,19 @@ const terraformApply = async (org, repo, planfile) => {
     output = e.message;
   }
 
+  const { tagPrefix } = parseWorkspace(repo);
+  const tagName = `${tagPrefix}${version.version}`;
+
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
   const release = await octokit.repos.createRelease({
     owner: org,
     repo,
-    name: version.version,
-    tag_name: version.version,
+    name: tagName,
+    tag_name: tagName,
     body: `
-The following was applied for ${version.version}:
+The following was applied for ${tagName}:
 
 \`\`\`
 ${output}
@@ -427,7 +458,7 @@ ${output}
 
   console.log(`Created release: ${release.data.name}: ${release.data.url}`);
 
-  return { apply: output, version };
+  return { apply: output, version, tagNam };
 };
 
 const terraformOutput = async (organization) => {
@@ -488,7 +519,7 @@ const run = async () => {
   switch (action) {
     case "plan": {
       // TODO: lint planfile (terraform show -json planfile)
-      const { version } = await prerelease();
+      const { version } = await prerelease(repo);
       const { plan, planfile } = await terraformPlan(
         organization,
         "./planfile"

@@ -16,9 +16,6 @@ inputs:
   terraform-cloud-token:
     description: "Access Token to Terraform Cloud (https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)"
     required: true
-  workspace-suffix:
-    description: "A suffix for the workspace name"
-    required: false
   working-directory:
     description: "The working directory containing terraform config"
     required: false
