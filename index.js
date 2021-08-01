@@ -436,29 +436,7 @@ const terraformApply = async (org, repo, planfile) => {
     output = e.message;
   }
 
-  const { tagPrefix } = parseWorkspace(repo);
-  const tagName = `${tagPrefix}${version.version}`;
-
-  const repoToken = core.getInput("repo-token");
-  const octokit = github.getOctokit(repoToken);
-
-  const release = await octokit.repos.createRelease({
-    owner: org,
-    repo,
-    name: tagName,
-    tag_name: tagName,
-    body: `
-The following was applied for ${tagName}:
-
-\`\`\`
-${output}
-\`\`\`
-`,
-  });
-
-  console.log(`Created release: ${release.data.name}: ${release.data.url}`);
-
-  return { apply: output, version, tagName };
+  return { apply: output, version };
 };
 
 const terraformOutput = async (organization) => {
