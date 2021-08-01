@@ -91,9 +91,13 @@ const prerelease = async (workspace, prereleaseCommit) => {
   const { tagPrefix } = parseWorkspace(workspace);
 
   if (!prereleaseCommit) {
+    const identifier = core.getInput("identifier", { required: false });
+    const newVersion = identifier
+      ? semver.parse(`${version.version}-${identifier}`)
+      : version;
     return {
-      version,
-      tagName: `${tagPrefix}${version.version}`,
+      version: newVersion,
+      tagName: `${tagPrefix}${newVersion.version}`,
     };
   }
 
@@ -124,7 +128,11 @@ const postrelease = async (org, repo, postreleaseCommit) => {
   const version = slyVersionFetch();
 
   if (!postreleaseCommit) {
-    return { version };
+    const identifier = core.getInput("identifier", { required: false });
+    const newVersion = identifier
+      ? semver.parse(`${version}-${identifier}`)
+      : version;
+    return { version: newVersion };
   }
 
   const repoToken = core.getInput("repo-token");
