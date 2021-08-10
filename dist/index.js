@@ -313,7 +313,7 @@ const terraformPost = async (url, payload) => {
 };
 
 const createTerraformOrganization = async (organization) => {
-  const createOrg = boolean(
+  const createOrg = boolean.boolean(
     core.getInput("create-organization", { required: false }) || "false"
   );
   if (!createOrg) {
