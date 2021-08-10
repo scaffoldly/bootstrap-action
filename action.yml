@@ -22,6 +22,10 @@ inputs:
   identifier:
     description: "Identifier to be used to prefix versions (Only leveraged when module-directory is set)."
     required: false
+  create-organization:
+    description: "Create an Organization in Terraform Cloud"
+    default: "false"
+    required: false
   dnt:
     description: "If set, opt-out of usage analytics"
     required: false
