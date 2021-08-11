@@ -176,19 +176,30 @@ const draftRelease = async (org, repo, tagName, plan, files) => {
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
+  let body = `
+  The following plan was created for ${tagName}:
+  
+  \`\`\`
+  ${plan}
+  \`\`\`
+  `;
+
+  if (body.length > 125000) {
+    body = `
+A plan was created but it was too long to display here.
+
+Please check the output from the action that generated this release,
+or download the attached \`plan-output.txt\` file to this release.
+`;
+  }
+
   const release = await octokit.repos.createRelease({
     owner: org,
     repo,
     name: tagName,
     tag_name: tagName,
     draft: true,
-    body: `
-The following plan was created for ${tagName}:
-
-\`\`\`
-${plan}
-\`\`\`
-`,
+    body,
   });
 
   console.log(`Created release: ${release.data.name}: ${release.data.url}`);
@@ -204,7 +215,7 @@ ${plan}
       });
 
       console.log(
-        `Uploaded planfile to release ${release.data.name}: ${asset.data.url}`
+        `Uploaded file to release ${release.data.name}: ${asset.data.url}`
       );
     }
   );
@@ -563,6 +574,7 @@ const run = async () => {
         moduleDirectory
       );
       await draftRelease(organization, repo, tagName, plan, {
+        "plan-output.txt": plan,
         planfile,
       });
       break;
