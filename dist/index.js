@@ -468,7 +468,7 @@ const terraformPlan = async (organization, planfile, moduleDirectory) => {
   const command = `terraform plan -no-color -out ${planfile}`;
   const { stdout: plan } = await exec(organization, command);
 
-  fs.writeFileSync("plan-output.txt", stdout);
+  fs.writeFileSync("plan-output.txt", plan);
 
   const terraformCloudToken = core.getInput("terraform-cloud-token");
   const encryptCommand = `gpg --batch -c --passphrase "${terraformCloudToken}" planfile`;
