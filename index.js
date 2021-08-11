@@ -460,6 +460,9 @@ const terraformPlan = async (organization, planfile, moduleDirectory) => {
 
   const command = `terraform plan -no-color -out ${planfile}`;
   const { stdout: plan } = await exec(organization, command);
+
+  fs.writeFileSync("plan-output.txt", stdout);
+
   const terraformCloudToken = core.getInput("terraform-cloud-token");
   const encryptCommand = `gpg --batch -c --passphrase "${terraformCloudToken}" planfile`;
   await exec(organization, encryptCommand);
@@ -469,7 +472,11 @@ const terraformPlan = async (organization, planfile, moduleDirectory) => {
     console.log("Changed working directory", process.cwd());
   }
 
-  return { plan, planfile: "./planfile.gpg" };
+  return {
+    plan,
+    planfile: "./planfile.gpg",
+    planOutput: "./plan-output.txt",
+  };
 };
 
 const terraformApply = async (org, planfile, moduleDirectory) => {
@@ -561,13 +568,13 @@ const run = async () => {
         repo,
         moduleDirectory ? false : true
       );
-      const { plan, planfile } = await terraformPlan(
+      const { plan, planfile, planOutput } = await terraformPlan(
         organization,
         "./planfile",
         moduleDirectory
       );
       await draftRelease(organization, repo, tagName, plan, {
-        "plan-output.txt": plan,
+        "plan-output.txt": planOutput,
         planfile,
       });
       break;
