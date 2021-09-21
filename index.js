@@ -161,6 +161,90 @@ const postrelease = async (org, repo, postreleaseCommit) => {
   return { version: newVersion };
 };
 
+const parsePlan = (plan) => {
+  const planRegex =
+    /  # (?<ResourceName>.*?) (?<ResourceActionStr>.*)\n  (?<ResourceActionSymbol>[  \-]|[  ~]|[  \+]|[\-/\+]|[\+/\-]) resource "(?<Resource>.*)" "(?<ResourceId>.*)" {/gm;
+  const planSummaryRegex = /\nPlan:(?<Summary>.*\.)\n\n/gm;
+  const refreshingStateRegex = /: Refreshing state... /gm;
+
+  // https://github.com/hashicorp/terraform/blob/2b6a1be18f9b9ccb6041bd656e62e5b3fc128d61/internal/command/format/diff.go#L1916
+  const ret = {
+    destroyCreate: [], // '-/+'
+    createDestroy: [], // '+/-'
+    create: [], // '  +'
+    destroy: [], // '  -'
+    update: [], // '  ~'
+    summary: null,
+    existingResources: (plan.match(refreshingStateRegex) || []).length,
+  };
+
+  try {
+    if (plan.indexOf("No changes. Infrastructure is up-to-date.") !== -1) {
+      ret.summary = "No changes. Infrastructure is up-to-date.";
+      return ret;
+    }
+
+    const separatorIx = plan.indexOf(
+      "Terraform will perform the following actions:"
+    );
+
+    if (separatorIx === -1) {
+      ret.summary =
+        "Unable to parse plan. Please file a bug report on scaffoldly/bootstrap-action";
+      core.warning(
+        "Unable to parse plan. Please file a bug report on scaffoldly/bootstrap-action"
+      );
+      return ret;
+    }
+
+    const summaryExtract = planSummaryRegex.exec(plan);
+    if (summaryExtract && summaryExtract.groups) {
+      ret.summary = summaryExtract.groups.Summary;
+    }
+
+    const actionPlan = plan.substring(separatorIx);
+
+    let extracted = planRegex.exec(actionPlan);
+    while (extracted && extracted.groups) {
+      const { ResourceName, ResourceActionSymbol } = extracted.groups;
+      switch (ResourceActionSymbol) {
+        case "-/+":
+          ret.destroyCreate.push(ResourceName);
+          break;
+        case "+/-":
+          ret.createDestroy.push(ResourceName);
+        case "+":
+          ret.create.push(ResourceName);
+        case "-":
+          ret.destroy.push(ResourceName);
+        case "~":
+          ret.update.push(ResourceName);
+        default:
+          core.warning("Unknown symbol", extracted.groups);
+          break;
+      }
+
+      extracted = planRegex.exec(actionPlan);
+    }
+  } catch (e) {
+    console.error("Unable to parse plan", e);
+    core.warning("Unable to parse plan", e.message);
+  }
+
+  return ret;
+};
+
+const summarizeChanges = (changes, title) => {
+  if (!changes || !changes.length) {
+    return "";
+  }
+
+  let ret = `
+### ${title}:
+${changes.map((change) => `  - \`${change}\`\n`)}
+`;
+};
+
 // TODO: Handle PR -- Plan only as PR Comment
 // TODO: Skip if commit message is "Initial Whatever" (from repo template)
 // TODO: Glob Up Commit Messages since last release
@@ -169,13 +253,43 @@ const draftRelease = async (org, repo, tagName, plan, files) => {
   const repoToken = core.getInput("repo-token");
   const octokit = github.getOctokit(repoToken);
 
+  const parsed = parsePlan(plan);
+
   let body = `
-  The following plan was created for ${tagName}:
-  
-  \`\`\`
-  ${plan}
-  \`\`\`
-  `;
+# Summary for ${tagName}:
+
+ - # of Existing Resources: \`${parsed.existingResources}\`
+${parsed.summary ? ` - Plan: ${parsed.summary}` : ""}
+
+## Proposed Changes:
+`;
+
+  if (
+    !parsed.create.length &&
+    !parsed.createDestroy.length &&
+    !parsed.destroy.length &&
+    !parsed.destroyCreate.length &&
+    !parsed.update.length
+  ) {
+    body = `
+ - None    
+`;
+  } else {
+    body = `
+${summarizeChanges(parsed.destroy, "Destroy")}
+${summarizeChanges(parsed.destroyCreate, "Destroy (then re-create)")}
+${summarizeChanges(parsed.create, "Create")}
+${summarizeChanges(
+  parsed.destroyCreate,
+  "Create (then destroy the former resource)"
+)}
+${summarizeChanges(parsed.update, "Update (in-place)")}
+
+Please check the output from the action that generated this release,
+or download the attached \`plan-output.txt\` file to this release for
+more specific detail.
+    `;
+  }
 
   if (body.length > 125000) {
     body = `
