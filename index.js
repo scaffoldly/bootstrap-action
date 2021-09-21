@@ -246,6 +246,8 @@ const summarizeChanges = (changes, title) => {
 ### ${title}:
 ${changes.map((change) => `  - \`${change}\`\n`)}
 `;
+
+  return ret;
 };
 
 // TODO: Handle PR -- Plan only as PR Comment
