@@ -263,7 +263,7 @@ const draftRelease = async (org, repo, tagName, plan, files) => {
   let body = `
 # Summary for ${tagName}:
 
- - # of Existing Resources: \`${parsed.existingResources}\`
+ - Existing Resources: \`${parsed.existingResources}\`
 ${parsed.summary ? ` - Plan: ${parsed.summary}` : ""}
 
 ## Proposed Changes:
