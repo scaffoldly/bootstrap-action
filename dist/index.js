@@ -198,9 +198,7 @@ const parsePlan = (plan) => {
     if (separatorIx === -1) {
       ret.summary =
         "Unable to parse plan. Please file a bug report on scaffoldly/bootstrap-action";
-      core.warning(
-        "Unable to parse plan. Please file a bug report on scaffoldly/bootstrap-action"
-      );
+      core.warning("Unable to parse plan.");
       return ret;
     }
 
@@ -228,7 +226,7 @@ const parsePlan = (plan) => {
           ret.update.push(ResourceName);
         default:
           console.warn("Unknown symbol", extracted);
-          core.warning("Unknown symbol", ResourceActionSymbol);
+          core.warning(`Unknown symbol: ${JSON.stringify(extracted.groups)}`);
           break;
       }
 
@@ -236,7 +234,7 @@ const parsePlan = (plan) => {
     }
   } catch (e) {
     console.error("Unable to parse plan", e);
-    core.warning("Unable to parse plan", e.message);
+    core.warning(`Unable to parse plan ${e.message}`);
   }
 
   return ret;
