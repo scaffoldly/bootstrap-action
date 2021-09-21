@@ -244,7 +244,7 @@ const summarizeChanges = (changes, title) => {
 
   let ret = `
 ### ${title}:
-${changes.map((change) => `  - \`${change}\`\n`)}
+${changes.map((change) => `  - \`${change}\``).join("\n")}
 `;
 
   return ret;
