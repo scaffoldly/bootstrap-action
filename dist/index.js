@@ -218,15 +218,19 @@ const parsePlan = (plan) => {
           break;
         case "+/-":
           ret.createDestroy.push(ResourceName);
+          break;
         case "+":
           ret.create.push(ResourceName);
+          break;
         case "-":
           ret.destroy.push(ResourceName);
+          break;
         case "~":
           ret.update.push(ResourceName);
+          break;
         default:
           console.warn("Unknown symbol", extracted.groups);
-          core.warning(`Unknown symbol: ${JSON.stringify(extracted.groups)}`);
+          core.warning(`Unknown symbol: ${ResourceActionSymbol}`);
           break;
       }
 
