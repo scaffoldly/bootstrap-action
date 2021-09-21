@@ -179,7 +179,7 @@ const parsePlan = (plan) => {
   };
 
   try {
-    if (plan.indexOf("No changes. Infrastructure is up-to-date.") !== -1) {
+    if (plan.indexOf("\n\nNo changes.") !== -1) {
       ret.summary = "No changes. Infrastructure is up-to-date.";
       return ret;
     }
