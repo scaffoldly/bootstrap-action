@@ -253,6 +253,8 @@ const summarizeChanges = (changes, title) => {
 ### ${title}:
 ${changes.map((change) => `  - \`${change}\`\n`)}
 `;
+
+  return ret;
 };
 
 // TODO: Handle PR -- Plan only as PR Comment
@@ -282,10 +284,12 @@ ${parsed.summary ? ` - Plan: ${parsed.summary}` : ""}
     !parsed.update.length
   ) {
     body = `
+${body}
  - None    
 `;
   } else {
     body = `
+${body}
 ${summarizeChanges(parsed.destroy, "Destroy")}
 ${summarizeChanges(parsed.destroyCreate, "Destroy (then re-create)")}
 ${summarizeChanges(parsed.create, "Create")}
@@ -294,12 +298,18 @@ ${summarizeChanges(
   "Create (then destroy the former resource)"
 )}
 ${summarizeChanges(parsed.update, "Update (in-place)")}
+`;
+  }
+
+  body = `
+${body}
+
+## More detail needed? 
 
 Please check the output from the action that generated this release,
 or download the attached \`plan-output.txt\` file to this release for
 more specific detail.
-    `;
-  }
+`;
 
   if (body.length > 125000) {
     body = `
