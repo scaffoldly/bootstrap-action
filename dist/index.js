@@ -227,7 +227,8 @@ const parsePlan = (plan) => {
         case "~":
           ret.update.push(ResourceName);
         default:
-          core.warning("Unknown symbol", extracted.groups);
+          console.warn("Unknown symbol", extracted);
+          core.warning("Unknown symbol", ResourceActionSymbol);
           break;
       }
 
