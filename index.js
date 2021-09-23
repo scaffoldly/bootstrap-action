@@ -506,7 +506,7 @@ const exec = (org, command) => {
       ...process.env,
       GITHUB_OWNER: org,
       GITHUB_ORGANIZATION: org,
-      TF_VAR_BOOTSTRAP_ORGANIZATION: org.lower(),
+      TF_VAR_BOOTSTRAP_ORGANIZATION: org.toLowerCase(),
     };
 
     console.log(`Using Env: ${JSON.stringify(env)}`);
@@ -517,7 +517,7 @@ const exec = (org, command) => {
       shell: true,
       env: {
         ...process.env,
-        TF_VAR_BOOTSTRAP_ORGANIZATION: org.lower(),
+        TF_VAR_BOOTSTRAP_ORGANIZATION: org.toLowerCase(),
       },
     });
 
