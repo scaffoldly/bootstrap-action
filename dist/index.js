@@ -731,6 +731,10 @@ const run = async () => {
 
     case "terraform": {
       const command = core.getInput("terraform", { required: true });
+      const moduleDirectory = core.getInput("module-directory", {
+        required: false,
+      });
+      await terraformInit(organization, repo, moduleDirectory);
       console.log(`Running terraform command: \`terraform ${command}\``);
       await exec(organization, `terraform ${command}`);
       break;
