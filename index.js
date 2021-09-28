@@ -729,7 +729,7 @@ const run = async () => {
       });
       await terraformInit(organization, repo, moduleDirectory);
       console.log(`Running terraform command: \`terraform ${command}\``);
-      await exec(organization, `terraform ${command.replace('"', '\\"')}`);
+      await exec(organization, `terraform ${command.split('"').join('\\"')}`);
       break;
     }
 
