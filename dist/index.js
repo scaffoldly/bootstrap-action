@@ -730,7 +730,7 @@ const run = async () => {
     }
 
     case "terraform": {
-      const command = core.getInput("command", { required: true });
+      const command = core.getInput("terraform", { required: true });
       console.log(`Running terraform command: \`terraform ${command}\``);
       await exec(organization, `terraform ${command}`);
       break;
@@ -740,13 +740,13 @@ const run = async () => {
       throw new Error(`Unknown action: ${action}`);
   }
 
-  const tfOutput = await terraformOutput(organization);
-  console.log("Output from Terraform:\n", JSON.stringify(tfOutput, null, 2));
+  // const tfOutput = await terraformOutput(organization);
+  // console.log("Output from Terraform:\n", JSON.stringify(tfOutput, null, 2));
 
-  core.setOutput("terraform-output", tfOutput);
-  if (tfOutput.github_matrix_include) {
-    core.setOutput("matrix", { include: tfOutput.github_matrix_include });
-  }
+  // core.setOutput("terraform-output", tfOutput);
+  // if (tfOutput.github_matrix_include) {
+  //   core.setOutput("matrix", { include: tfOutput.github_matrix_include });
+  // }
 };
 
 (async () => {
