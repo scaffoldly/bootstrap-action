@@ -287,7 +287,7 @@ ${summarizeChanges(parsed.destroy, "Destroy")}
 ${summarizeChanges(parsed.destroyCreate, "Destroy (then re-create)")}
 ${summarizeChanges(parsed.create, "Create")}
 ${summarizeChanges(
-  parsed.destroyCreate,
+  parsed.createDestroy,
   "Create (then destroy the former resource)"
 )}
 ${summarizeChanges(parsed.update, "Update (in-place)")}
