@@ -163,7 +163,7 @@ const postrelease = async (org, repo, postreleaseCommit) => {
 
 const parsePlan = (plan) => {
   const planRegex =
-    /\s*# (?<ResourceName>.*?) (?<ResourceActionStr>.*)\n\s*(?<ResourceActionSymbol>.*) resource "(?<Resource>.*)" "(?<ResourceId>.*)" {/gm;
+    /  # (?<ResourceName>.*?) (?<ResourceActionStr>.*)\n(?<ExtraInfo>.*?\n)?\s*(?<ResourceActionSymbol>.*) resource "(?<Resource>.*)" "(?<ResourceId>.*)" {/gm;
   const planSummaryRegex = /\nPlan:(?<Summary>.*\.)\n\n/gm;
   const refreshingStateRegex = /: Refreshing state... /gm;
 
