@@ -163,7 +163,7 @@ const postrelease = async (org, repo, postreleaseCommit) => {
 
 const parsePlan = (plan) => {
   const planRegex =
-    /  # (?<ResourceName>.*?) (?<ResourceActionStr>.*)\n(?<ResourceActionSymbol>[  \-]|[  ~]|[  \+]|[\-/\+]|[\+/\-]) resource "(?<Resource>.*)" "(?<ResourceId>.*)" {/gm;
+    /\s*# (?<ResourceName>.*?) (?<ResourceActionStr>.*)\n\s*(?<ResourceActionSymbol>.*) resource "(?<Resource>.*)" "(?<ResourceId>.*)" {/gm;
   const planSummaryRegex = /\nPlan:(?<Summary>.*\.)\n\n/gm;
   const refreshingStateRegex = /: Refreshing state... /gm;
 
@@ -212,13 +212,13 @@ const parsePlan = (plan) => {
         case "+/-":
           ret.createDestroy.push(ResourceName);
           break;
-        case "  +":
+        case "+":
           ret.create.push(ResourceName);
           break;
-        case "  -":
+        case "-":
           ret.destroy.push(ResourceName);
           break;
-        case "  ~":
+        case "~":
           ret.update.push(ResourceName);
           break;
         default:
