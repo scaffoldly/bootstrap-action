@@ -68,8 +68,13 @@ const parseWorkspace = (workspace) => {
     required: false,
   });
 
+  const workspaceName =
+    core.getInput("workspace", {
+      required: false,
+    }) || workspace;
+
   if (!moduleDirectory) {
-    return { workspaceName: workspace, tagPrefix: `` };
+    return { workspaceName, tagPrefix: `` };
   }
 
   const tagPrefix = moduleDirectory
@@ -81,7 +86,7 @@ const parseWorkspace = (workspace) => {
     .replace(/[^a-zA-Z0-9]/gm, "-"); // non alphanum to dashes
 
   return {
-    workspaceName: `${workspace}-${scrubbedModuleDirectory}`,
+    workspaceName: `${workspaceName}-${scrubbedModuleDirectory}`,
     tagPrefix: `${tagPrefix}/`,
   };
 };
@@ -548,28 +553,52 @@ const exec = (org, command) => {
   });
 };
 
-const terraformInit = async (organization, workspace, moduleDirectory) => {
+const terraformInit = async (organization, repo, moduleDirectory) => {
   const cwd = process.cwd();
   if (moduleDirectory) {
     process.chdir(moduleDirectory);
     console.log("Changed working directory", process.cwd());
   }
 
-  const terraformCloudToken = core.getInput("terraform-cloud-token");
+  const terraformCloudToken = core.getInput("terraform-cloud-token", {
+    required: false,
+  });
+  const repoToken = core.getInput("repo-token");
 
-  const { workspaceName } = parseWorkspace(workspace);
+  const stateProvider =
+    core.getInput("state-provider", { required: false }) || "app.terraform.io";
 
+  const { workspaceName } = parseWorkspace(repo);
   fs.mkdirSync(TERRAFORM_DIRECTORY);
-  fs.writeFileSync(
-    BACKEND_HCL_FILE,
-    `
+
+  let command = `terraform init -backend-config=${BACKEND_HCL_FILE}`;
+
+  if (stateProvider === "tfstate.dev") {
+    fs.writeFileSync(
+      BACKEND_HCL_FILE,
+      `
+address        = "https://api.tfstate.dev/github/v1"
+lock_address   = "https://api.tfstate.dev/github/v1/lock"
+unlock_address = "https://api.tfstate.dev/github/v1/lock"
+lock_method    = "PUT"
+unlock_method  = "DELETE"
+username       = "${organization}/${repo}@${workspaceName}"
+`
+    );
+
+    command = `${command} -backend-config="password=${repoToken} -reconfigure"`;
+  } else {
+    fs.writeFileSync(
+      BACKEND_HCL_FILE,
+      `
 workspaces { name = "${workspaceName}" }
 hostname     = "app.terraform.io"
 organization = "${organization}"
 `
-  );
+    );
 
-  const command = `terraform init -backend-config=${BACKEND_HCL_FILE} -backend-config="token=${terraformCloudToken}"`;
+    command = `${command} -backend-config="token=${terraformCloudToken}"`;
+  }
 
   await exec(organization, command);
 
