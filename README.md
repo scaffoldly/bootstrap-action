@@ -19,7 +19,7 @@ This action runs all the steps required to run a `terraform plan` or
 
 ### `terraform-cloud-token`
 
-**Required** [Access Token to Terraform Cloud](https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)
+_Optional_ [Access Token to Terraform Cloud](https://docs.scaffold.ly/getting-started/prerequisites#terraform-cloud)
 
 ## Outputs
 
@@ -29,7 +29,7 @@ The GitHub/Terraform Cloud Organization name
 
 ## Example usage
 
-Run a `terraform plan`:
+Run a `terraform plan`: (using `app.terraform.io`)
 
 ```yaml
 - uses: actions/checkout@v2
@@ -40,4 +40,18 @@ Run a `terraform plan`:
     repo-token: ${{ secrets.GITHUB_TOKEN }}
     root-email: ${{ secrets.BOOTSTRAP_ROOT_EMAIL }}
     terraform-cloud-token: ${{ secrets.BOOTSTRAP_TERRAFORM_TOKEN }}
+```
+
+Run a `terraform plan`: (using `tfstate.dev`)
+
+```yaml
+- uses: actions/checkout@v2
+- uses: hashicorp/setup-terraform@v1
+- uses: scaffoldly/setup-bootstrap@v1
+  with:
+    action: plan
+    repo-token: ${{ secrets.GITHUB_TOKEN }}
+    root-email: ${{ secrets.BOOTSTRAP_ROOT_EMAIL }}
+    state-provider: tfstate.dev
+    workspace: default
 ```
