@@ -476,6 +476,13 @@ const createTerraformOrganization = async (organization) => {
 };
 
 const createTerraformWorkspace = async (organization, workspace) => {
+  const stateProvider =
+    core.getInput("state-provider", { required: false }) || "app.terraform.io";
+
+  if (stateProvider !== "app.terraform.io") {
+    return;
+  }
+
   const { workspaceName } = parseWorkspace(workspace);
 
   const { status, data } = await terraformPost(
