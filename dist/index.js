@@ -634,8 +634,7 @@ const terraformPlan = async (organization, planfile, moduleDirectory) => {
 
   fs.writeFileSync("plan-output.txt", plan);
 
-  const terraformCloudToken = core.getInput("terraform-cloud-token");
-  const encryptCommand = `gpg --batch -c --passphrase "${terraformCloudToken}" planfile`;
+  const encryptCommand = `gpg --batch -c --passphrase "${organization}" planfile`;
   await exec(organization, encryptCommand);
 
   if (moduleDirectory) {
@@ -658,7 +657,7 @@ const terraformApply = async (org, planfile, moduleDirectory) => {
   }
 
   const terraformCloudToken = core.getInput("terraform-cloud-token");
-  const decryptCommand = `gpg --batch -d --passphrase "${terraformCloudToken}" -o ./plan ${planfile}`;
+  const decryptCommand = `gpg --batch -d --passphrase "${org}" -o ./plan ${planfile}`;
   await exec(org, decryptCommand);
 
   let output;
