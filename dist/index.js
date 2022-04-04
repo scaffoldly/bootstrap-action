@@ -600,7 +600,7 @@ username       = "${organization}/${repo}@${workspaceName}"
 `
     );
 
-    command = `${command} -backend-config="password=${repoToken} -reconfigure"`;
+    command = `${command} -backend-config="password=${repoToken}" -reconfigure`;
   } else {
     fs.writeFileSync(
       BACKEND_HCL_FILE,
